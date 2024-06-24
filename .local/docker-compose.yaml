@@ -1,0 +1,119 @@
+version: '3.9'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "$ZOOKEEPER_PORT:$ZOOKEEPER_PORT"
+    env_file:
+      - .env
+
+  broker:
+    image: confluentinc/cp-server:latest
+    hostname: broker
+    container_name: broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "$BROKER_PORT_1:$BROKER_PORT_1"
+      - "$BROKER_PORT_2:$BROKER_PORT_2"
+    env_file:
+      - .env
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:latest
+    hostname: schema-registry
+    container_name: schema-registry
+    depends_on:
+      - broker
+    ports:
+      - "$SCHEMA_REGISTRY_PORT_C:$SCHEMA_REGISTRY_PORT_C"
+    env_file:
+      - .env
+
+  control-center:
+    image: confluentinc/cp-enterprise-control-center:latest
+    hostname: control-center
+    container_name: control-center
+    depends_on:
+      - broker
+      - schema-registry
+      - ksqldb-server
+    ports:
+      - "$CONTROL_CENTER_PORT:$CONTROL_CENTER_PORT"
+    env_file:
+      - .env
+    environment:
+      PORT: 9021
+
+  ksqldb-server:
+    image: confluentinc/cp-ksqldb-server:latest
+    hostname: ksqldb-server
+    container_name: ksqldb-server
+    depends_on:
+      - broker
+    ports:
+      - "$KSQLDB_PORT:$KSQLDB_PORT"
+    env_file:
+      - .env
+
+  ksqldb-cli:
+    image: confluentinc/cp-ksqldb-cli:latest
+    container_name: ksqldb-cli
+    depends_on:
+      - broker
+      - ksqldb-server
+    entrypoint: /bin/sh
+    tty: true
+
+  ksql-datagen:
+    image: confluentinc/ksqldb-examples:latest
+    hostname: ksql-datagen
+    container_name: ksql-datagen
+    depends_on:
+      - ksqldb-server
+      - broker
+      - schema-registry
+    command: "bash -c 'echo Waiting for Kafka to be ready... && \
+                       cub kafka-ready -b broker:29092 1 40 && \
+                       echo Waiting for Confluent Schema Registry to be ready... && \
+                       cub sr-ready schema-registry 8081 40 && \
+                       echo Waiting a few seconds for topic creation to finish... && \
+                       sleep 11 && \
+                       tail -f /dev/null'"
+    env_file:
+      - .env
+
+  rest-proxy:
+    image: confluentinc/cp-kafka-rest:latest
+    depends_on:
+      - broker
+      - schema-registry
+    ports:
+      - "$REST_PROXY:$REST_PROXY"
+    hostname: rest-proxy
+    container_name: rest-proxy
+    env_file:
+      - .env
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: otel-collector
+    volumes:
+      - ./otel-config.yaml:/etc/collector.yaml
+    ports:
+      - "4317:4317"
+  
+  manual:
+    container_name: manual-kafka
+    image: cesarouchida/manual-kafka:latest
+    depends_on:
+      - broker
+      - schema-registry
+      - ksqldb-server
+    command: make consumer
+
+  
+  

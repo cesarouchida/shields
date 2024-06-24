@@ -1,0 +1,14 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: kafka:55680
+
+exporters:
+  logging:
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      exporters: [logging]

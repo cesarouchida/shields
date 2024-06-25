@@ -14,4 +14,4 @@ producer:
 schema: 
 	curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
     --data '{"schema": "{\"type\":\"record\",\"name\":\"User\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"age\",\"type\":\"int\"}]}"}' \
-    http://localhost:8081/subjects/my-topic-value/versions
+    http://localhost:8081/subjects/${TOPIC}/versions
